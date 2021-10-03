@@ -21,19 +21,38 @@ int main() {
   buff[sz] = '\0';
   fread(buff, sizeof(char), sz, fin);
 
-  char * pch = strtok(buff, "\n");
+
+  size_t str_cnt = 0;
+  size_t n_size = 10;
+  char** array = (char**)calloc(n_size, sizeof(char*));
+  
+  char * str = strtok(buff, "\n");
  
-  while (pch != NULL)
+  while (str != NULL)
   {
-    printf("%s\n", pch);
-    pch = strtok (NULL, "\n");
+    array[str_cnt] = str;
+    str = strtok (NULL, "\n");
+    str_cnt++;
+    
+    if (str_cnt >= n_size) {
+      n_size += 10;
+      array = (char**)realloc(array, n_size * sizeof(char*));
+    }    
   }
+  
+  for (size_t i = 0; i < str_cnt; i++)
+  {
+    printf("%s\n", array[i]);
+  }
+
+  
 
 
   // fprintf(stdout, "%s\n", buff);
 
   printf("%lu\n", sz);
 
+  free(array);
   free(buff);
   fclose(fin);
 
