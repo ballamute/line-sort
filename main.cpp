@@ -5,13 +5,12 @@
 #include <assert.h>
 
 #define PASS_SYMBOLS "!?.,;:-_\"'«»() "
-/*
+
 struct fstring 
 {
   char * content;
   size_t size;
 };
-*/
 
 enum ErrorCodes
 {
@@ -19,19 +18,7 @@ enum ErrorCodes
   OPEN_ERROR,
   READ_ERROR,
 };
-/*
-int strcmp(const char* s1, const char* s2)
-{
-  // assert(s1 != NULL);
-  // assert(s2 != NULL);
-  
-  while (*s1 && (*s1 == *s2))
-  {
-    s1++, s2++;
-  }
-    
-  return *(const unsigned char*)s1 - *(const unsigned char*)s2;
-}*/
+
 
 int StrCmp(const char* s1, const char* s2)
 {
@@ -54,83 +41,136 @@ int StrCmp(const char* s1, const char* s2)
   return (unsigned char)*s1 - (unsigned char)*s2;
 }
 
-int main() 
+
+void BeginSort(fstring* text, size_t str_num)
 {
-  
-  FILE* fin = fopen("poem.txt", "rb+");
-
-  fseek(fin, 0L, SEEK_END);
-  size_t sz = ftell(fin);
-  fseek(fin, 0L, SEEK_SET);
-
-  char* buff = (char*)calloc(sz + 1, sizeof(char));
-  buff[sz] = '\0';
-  fread(buff, sizeof(char), sz, fin);
-
-
-  size_t str_cnt = 0;
-  size_t n_size = 10;
-  char** array = (char**)calloc(n_size, sizeof(char*));
-  
-  char * str = strtok(buff, "\n");
- 
-  while (str != NULL)
-  {
-    array[str_cnt] = str;
-    str = strtok (NULL, "\n");
-    str_cnt++;
-    
-    if (str_cnt >= n_size) 
-    {
-      n_size += 10;
-      array = (char**)realloc(array, n_size * sizeof(char*));
-    }    
-  }
-  
-  for (size_t i = 0; i < str_cnt; i++)
-  {
-    printf("%s\n", array[i]);
-  }
-  printf("------------------%lu------------------\n", sz);
-
-
-
   char * str_buff;
 
-  for(size_t i = 0; i < str_cnt - 1; i++)
+  for(size_t i = 0; i < str_num - 1; i++)
   {
-    for(size_t j = 0; j < str_cnt - i - 1; j++)
+    for(size_t j = 0; j < str_num - i - 1; j++)
     {
-      if(StrCmp(array[j], array[j + 1]) > 0)
+      if(StrCmp((text + j)->content, (text + j + 1)->content) > 0)
       {
-        str_buff = array[j];
-        array[j] = array[j + 1];
-        array[j + 1] = str_buff;
+        str_buff = (text + j)->content;
+        (text + j)->content = (text + j + 1)->content;
+        (text + j + 1)->content = str_buff;
       } 
     }
   }
-
-  FILE* fout = fopen("output.txt", "w");
-
-    for (size_t i = 0; i < str_cnt; i++) {
-        fprintf(fout, "%s\n", array[i]);
-    }
-    // fprintf(fout, "\n\n");
+}
 
 
-  for (size_t i = 0; i < str_cnt; i++)
+int FileOutput(const char* name, fstring* text, size_t str_num)
+{
+  assert(name != NULL);
+  assert(text != NULL);
+  assert(str_num > 0);
+  
+  FILE* fout;
+  if ((fout = fopen(name, "w")) == NULL)
   {
-    printf("%s\n", array[i]);
+    return OPEN_ERROR;
   }
-  printf("------------------%lu------------------\n", sz);
+  
+  for (size_t i = 0; i < str_num; i++) 
+  {
+    fprintf(fout, "%s\n", (text + i)->content);
+  }
+  // fprintf(fout, "\n\n");
+  fclose(fout);
+  return NO_ERROR;
+}
 
 
+int FileInput(const char* name, char** buffer, size_t* char_num)
+{
+  assert(name != NULL);
+  assert(buffer != NULL);
+
+  *char_num = 0;
+
+  FILE* fin; 
+  if ((fin = fopen(name, "rb+")) == NULL)
+  {
+    return OPEN_ERROR;
+  }
+
+  fseek(fin, 0L, SEEK_END);
+  *char_num = ftell(fin);
+  fseek(fin, 0L, SEEK_SET);
+
+  *buffer = (char*)calloc(*char_num + 1, sizeof(char));
+  *(*buffer + *char_num) = '\0';
+  fread(*buffer, sizeof(char), *char_num, fin);
 
   fclose(fin);
-  fclose(fout);
-  free(array);
-  free(buff);
+  return NO_ERROR;
+}
+
+
+void StrPrintf(fstring* text, size_t str_num, size_t char_num)
+{
+  for (size_t i = 0; i < str_num; i++)
+  {
+    printf("%s\n", (text + i)->content);
+    printf("%ld\n", (text + i)->size);
+  }
+  printf("---------------------%05lu---------------------\n", char_num);
+  printf("---------------------%05lu---------------------\n", str_num);
+}
+
+
+fstring* BufferHandle(char* buffer, size_t* str_num, const char* sym = "\n")
+{
+  *str_num = 0;
+  size_t n_size = 10;
+  
+  char * str = strtok(buffer, sym);
+
+  fstring* text = (fstring*)calloc(n_size, sizeof(fstring));
+ 
+  while (str != NULL)
+  {
+    (text + *str_num)->content = str;
+    (text + *str_num)->size = strlen(str);
+     
+    str = strtok (NULL, sym);
+    (*str_num)++; 
+    
+    if (*str_num >= n_size) 
+    {
+      n_size += 10;
+      text = (fstring*)realloc(text, n_size * sizeof(fstring));
+    }    
+  }
+  return text;
+
+}
+
+
+int main() 
+{
+  char* buffer;
+
+  size_t char_num;
+
+  FileInput("poem.txt", &buffer, &char_num);
+
+  size_t str_num;
+
+  fstring* text = BufferHandle(buffer, &str_num);
+
+  StrPrintf(text, str_num, char_num);
+
+  BeginSort(text, str_num);
+
+  FileOutput("output.txt", text, str_num);
+
+  StrPrintf(text, str_num, char_num);
+
+  free(text);
+  free(buffer);
 
   return 0;
 }
-
